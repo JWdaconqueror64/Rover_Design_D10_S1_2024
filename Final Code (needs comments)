@@ -1,0 +1,242 @@
+// C++ code
+//
+#include <Servo.h>
+
+const int enablePin1 = A1;
+const int enablePin2 = A3;
+const int inputPin1A = 3;
+const int inputPin2A = 4;
+const int inputPin3A = 5;
+const int inputPin4A = 6;
+const int echoPin = 9; 
+const int trigPin = 10;
+
+Servo servo_12;
+
+float distance;
+int currentA = 90;
+int unit = 190/6;
+int corMem; // how much it corrected by
+int clearRight = 0;
+
+void setup()
+{
+   //Set up for the motors
+  pinMode (enablePin1, OUTPUT);
+  pinMode (enablePin2, OUTPUT);
+  pinMode (inputPin1A, OUTPUT); 
+  pinMode (inputPin2A, OUTPUT);
+  pinMode (inputPin3A, OUTPUT);
+  pinMode (inputPin4A, OUTPUT);
+  digitalWrite (enablePin1, LOW);
+  digitalWrite (enablePin2, LOW);
+  digitalWrite (inputPin1A, LOW);
+  digitalWrite (inputPin2A, LOW);
+  digitalWrite (inputPin3A, LOW);
+  digitalWrite (inputPin4A, LOW);
+  //Set up for the Sonar
+  Serial.begin(9600);
+  
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+  //Set up for the servo
+  servo_12.attach(12, 500, 2500); //works as (pin, Min, Max), Min refers to power for angle 0, Max refers to power for angle 180
+  servo_12.write(90);
+  delay(3000); // this is to make sure the servo is in place before the rover begins
+  
+  //Turn on the rover
+  digitalWrite (enablePin1, HIGH);
+  digitalWrite (enablePin2, HIGH);
+}
+
+void loop() {
+  bool seeForWall = 0;
+  int creepDist = 0;
+  int turnQ = 0;
+  corMem = 0;
+  distance = check(180); //check right
+  if (distance > 190){
+    if (clearRight == 1){
+      turnQ = 90;
+    }
+    clearRight = 1;
+  }
+  else{
+    clearRight = 0;
+    corMem = (distance-80)/2;
+    if (corMem > 8){
+      corMem = 8;
+    }
+    else if (corMem < -8){
+      corMem = -8;
+    }
+    turnQ = corMem;
+  }
+  distance = check(135);
+  if (distance <= 80){
+    turnQ = -45;
+  }
+  distance = check(90);
+  if (distance < 190 && turnQ != -45){
+    turnQ = 0;
+    seeForWall = 1;
+    creepDist = distance - 80;
+  }
+  if (seeForWall){
+    go(creepDist);
+    
+    
+      if (check(180) > 190){
+        move(90,95); 
+      }
+      else if(check(0) > 190){
+        turn(-90);
+      }
+      else{
+        turn(180);
+      }
+    
+  }
+  else{
+    int movUnit = unit;
+    if (turnQ == 90){
+      movUnit = 95;
+      clearRight = 0;
+      go(45);
+    }
+    move(turnQ,movUnit);
+    if (turnQ = corMem){
+      turn(-corMem/1.5);
+    }
+  }
+}
+
+
+
+void stop()
+{
+  digitalWrite (inputPin1A, LOW);
+  digitalWrite (inputPin2A, LOW);
+  digitalWrite (inputPin3A, LOW);
+  digitalWrite (inputPin4A, LOW);
+
+  delay(200);
+  //This delay is to ensure the rover has stabilised before continuing 
+}
+
+void go(int dist)
+{
+  int rev = 0;
+  int forMod = 2800/190;
+  if (dist<0){
+    rev = 1;
+  }
+  digitalWrite (inputPin1A, rev - 0);
+  digitalWrite (inputPin2A, 1 - rev);
+  digitalWrite (inputPin3A, 1 - rev);
+  digitalWrite (inputPin4A, rev - 0);
+
+  delay(abs(dist * forMod));
+  // time taken to travel ~190mm
+
+  stop();
+}
+
+void turnLeft(int a2)
+{
+ digitalWrite (inputPin1A, HIGH);
+ digitalWrite (inputPin2A, LOW);
+ digitalWrite (inputPin3A, HIGH);
+ digitalWrite (inputPin4A, LOW);
+  
+ delay (a2);
+   //time taken to turn 90 degrees
+
+ stop();
+}
+
+void turnRight(int a2)
+{
+ digitalWrite (inputPin1A, LOW);
+ digitalWrite (inputPin2A, HIGH);
+ digitalWrite (inputPin3A, LOW);
+ digitalWrite (inputPin4A, HIGH);
+  
+ delay (a2);
+   //time taken to turn 90 degrees
+ stop();
+}
+
+
+
+float scan()
+{
+  float duration;
+  float dis1;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  duration = pulseIn(echoPin, HIGH);
+  dis1 = (343.000*1000*0.000001)*(duration/2);
+  return dis1;
+  //distance currently returns distance in cm
+} 
+
+float check(int a)
+{
+  float x1;
+  servo_12.write(180-a);
+  delay(200); //so the sonar is in place
+  x1 =scan();
+  return x1;
+}
+
+
+void turn(int k){
+  int trnMod = 995/90;
+  if (k>0){
+    turnRight(k*trnMod);
+  }
+  if (k<0){
+    turnLeft(-k*trnMod);
+  }
+  stop();
+}
+
+void move(int ang, int dist1){ 
+  turn(ang);
+  go(dist1);
+}
+
+bool creep(int dist1){
+  bool tf = 0;
+  int forMod = 2800/190;
+  int distT = millis()+(dist1*forMod);
+  servo_12.write(45);
+  delay(500);
+  digitalWrite (inputPin1A, 0);
+  digitalWrite (inputPin2A, 1);
+  digitalWrite (inputPin3A, 1);
+  digitalWrite (inputPin4A, 0);
+  while(millis()<distT){
+    distance = scan();
+    if (distance < 70){
+      tf = 1;
+      distT = 0;
+    }
+    delay(10);
+  }
+  stop();
+  return tf;
+}
+
+bool moveC(int ang, int dist1){ 
+  turn(ang);
+  return creep(dist1);
+}
+//clear refers to the max values expected for the flat wall
+//clear2 refers to the max values expected for an angled wall
