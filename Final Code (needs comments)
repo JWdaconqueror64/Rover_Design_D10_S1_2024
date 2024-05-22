@@ -2,6 +2,7 @@
 //
 #include <Servo.h>
 
+// Setting up pins
 const int enablePin1 = A1;
 const int enablePin2 = A3;
 const int inputPin1A = 3;
@@ -13,6 +14,7 @@ const int trigPin = 10;
 
 Servo servo_12;
 
+// setting up global variables
 float distance;
 int currentA = 90;
 int unit = 190/6;
@@ -51,18 +53,22 @@ void setup()
 }
 
 void loop() {
+  // Please check below "void loop" to get an explanation of all the functions
+  // Setting up variables that need to be reset each loop
   bool seeForWall = 0;
   int creepDist = 0;
   int turnQ = 0;
   corMem = 0;
   distance = check(180); //check right
-  if (distance > 190){
+  if (distance > 190){ // if distance is greater than 90 say right is clear
     if (clearRight == 1){
-      turnQ = 90;
+      turnQ = 90; // if right was clear the one directly preceeding tell the program to turn right later
+                  // this is because the black bars along the side don't give a reading and make it want to turn right
+                  // so this was done to avoid that
     }
-    clearRight = 1;
+    clearRight = 1; // if it is clear but not previously, say it is currently clear
   }
-  else{
+  else{ // if it is not clear the program will try to center the rover in the maze
     clearRight = 0;
     corMem = (distance-80)/2;
     if (corMem > 8){
@@ -73,40 +79,35 @@ void loop() {
     }
     turnQ = corMem;
   }
-  distance = check(135);
+  distance = check(135); // if it sees a 45 degree wall tell the program to avoid it by turning left 45 degrees
   if (distance <= 80){
     turnQ = -45;
   }
   distance = check(90);
-  if (distance < 190 && turnQ != -45){
+  if (distance < 190 && turnQ != -45){ // if there is a wall in front tell the program to execute that program if it hasn't already seen a 45 degree wall
     turnQ = 0;
     seeForWall = 1;
-    creepDist = distance - 80;
+    creepDist = distance - 80; // how much it needs to move to get 80 mm from the wall starting from the center
   }
   if (seeForWall){
-    go(creepDist);
-    
-    
-      if (check(180) > 190){
+    go(creepDist); // move up to wall
+      if (check(180) > 190){ // if the right is clear turn right, otherwise turn left
         move(90,95); 
       }
-      else if(check(0) > 190){
-        turn(-90);
-      }
       else{
-        turn(180);
+        turn(-90);
       }
     
   }
   else{
-    int movUnit = unit;
-    if (turnQ == 90){
-      movUnit = 95;
-      clearRight = 0;
-      go(45);
+    int movUnit = unit; // move by a globally set distance
+    if (turnQ == 90){ // if it was previously told that it was clear to turn right through a hole, turn right through that hole;
+      movUnit = 95; // set the move to half a maze tile
+      clearRight = 0; // reset clear right
+      go(45); // move forward to avoid any contact with wall on right you are turning around
     }
-    move(turnQ,movUnit);
-    if (turnQ = corMem){
+    move(turnQ,movUnit); // execute movement 
+    if (turnQ = corMem){ // if it was a correction function turn back almost to where it was facing to make it more stable whilst moving
       turn(-corMem/1.5);
     }
   }
@@ -114,7 +115,7 @@ void loop() {
 
 
 
-void stop()
+void stop() // Stops all motors
 {
   digitalWrite (inputPin1A, LOW);
   digitalWrite (inputPin2A, LOW);
@@ -125,11 +126,11 @@ void stop()
   //This delay is to ensure the rover has stabilised before continuing 
 }
 
-void go(int dist)
+void go(int dist) // Decides which direction and how far the rover moves straight forwards and backwards
 {
-  int rev = 0;
-  int forMod = 2800/190;
-  if (dist<0){
+  int rev = 0; // if 1 the rover will reverse
+  int forMod = 2800/190; // How long it takes to go 1mm
+  if (dist<0){ // If given distance is negative the rover will move backwards by that amount
     rev = 1;
   }
   digitalWrite (inputPin1A, rev - 0);
@@ -137,13 +138,12 @@ void go(int dist)
   digitalWrite (inputPin3A, 1 - rev);
   digitalWrite (inputPin4A, rev - 0);
 
-  delay(abs(dist * forMod));
-  // time taken to travel ~190mm
+  delay(abs(dist * forMod)); // makes it go as far as it needs
 
   stop();
 }
 
-void turnLeft(int a2)
+void turnLeft(int a2) // Turns left by a2 degrees
 {
  digitalWrite (inputPin1A, HIGH);
  digitalWrite (inputPin2A, LOW);
@@ -151,12 +151,12 @@ void turnLeft(int a2)
  digitalWrite (inputPin4A, LOW);
   
  delay (a2);
-   //time taken to turn 90 degrees
+   //time taken to turn "a2" degrees
 
  stop();
 }
 
-void turnRight(int a2)
+void turnRight(int a2) // Turns right by a2 degrees
 {
  digitalWrite (inputPin1A, LOW);
  digitalWrite (inputPin2A, HIGH);
@@ -164,55 +164,55 @@ void turnRight(int a2)
  digitalWrite (inputPin4A, HIGH);
   
  delay (a2);
-   //time taken to turn 90 degrees
+   //time taken to turn "a2" degrees
  stop();
 }
 
 
 
-float scan()
+float scan() // measures distance using the Sonar
 {
   float duration;
   float dis1;
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trigPin, LOW); // does sonar things
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
   
-  duration = pulseIn(echoPin, HIGH);
-  dis1 = (343.000*1000*0.000001)*(duration/2);
+  duration = pulseIn(echoPin, HIGH); // measures the delay in micro seconds
+  dis1 = (343.000*1000*0.000001)*(duration/2); // turns the delay into a distance in mm
   return dis1;
-  //distance currently returns distance in cm
+  // returns the measured distance to the thing that called it
 } 
 
-float check(int a)
+float check(int a) calls upon "scan()" to measure distance with the servo it is attached to being set to "a" degrees
 {
   float x1;
-  servo_12.write(180-a);
+  servo_12.write(180-a); // moves servo
   delay(200); //so the sonar is in place
   x1 =scan();
-  return x1;
+  return x1; // returns distance to thing that called it
 }
 
 
-void turn(int k){
-  int trnMod = 995/90;
-  if (k>0){
+void turn(int k){ // makes the Rover turn by "k" degrees
+  int trnMod = 995/90; // how long it takes to turn one degree
+  if (k>0){ // if number is positive turn right by that amount
     turnRight(k*trnMod);
   }
-  if (k<0){
+  if (k<0){ // if number is negative turn left by that amount
     turnLeft(-k*trnMod);
   }
   stop();
 }
 
-void move(int ang, int dist1){ 
+void move(int ang, int dist1){ // tell it how much to turn then how far to move in one function
   turn(ang);
   go(dist1);
 }
 
-bool creep(int dist1){
+bool creep(int dist1){ // this function is a left over from earlier code, please disregard
   bool tf = 0;
   int forMod = 2800/190;
   int distT = millis()+(dist1*forMod);
@@ -234,7 +234,7 @@ bool creep(int dist1){
   return tf;
 }
 
-bool moveC(int ang, int dist1){ 
+bool moveC(int ang, int dist1){ // this function is left over from earlier code, please disregard
   turn(ang);
   return creep(dist1);
 }
