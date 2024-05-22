@@ -17,7 +17,7 @@ Servo servo_12;
 // setting up global variables
 float distance;
 int currentA = 90;
-int unit = 190/6;
+int unit = 190/6; // how far the rover should move per loop
 int corMem; // how much it corrected by
 int clearRight = 0;
 
