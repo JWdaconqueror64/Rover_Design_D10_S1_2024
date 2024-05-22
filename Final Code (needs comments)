@@ -58,7 +58,6 @@ void loop() {
   bool seeForWall = 0;
   int creepDist = 0;
   int turnQ = 0;
-  corMem = 0;
   distance = check(180); //check right
   if (distance > 190){ // if distance is greater than 90 say right is clear
     if (clearRight == 1){
